@@ -1,0 +1,262 @@
+---
+title: "hw02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 Загрузка и очистка данных
+
+>Загрузите данные в датафрейм, который назовите ``data``.
+
+```{r}
+parsed <- read.csv2("https://raw.githubusercontent.com/SergeyMirvoda/da2016/master/data/calif_penn_2011.csv", header = TRUE, sep = ",")
+data <- data.frame(parsed)
+```
+
+>Сколько строк и столбцов в ``data``?
+
+```{r}
+nrow(data)
+```
+
+```{r}
+ncol(data)
+```
+
+>Выполните следующую команду и объясните, что она делает. ```colSums(apply(data,c(1,2), is.na))```
+
+```{r}
+colSums(apply(data, c(1,2), is.na))
+```
+
+Функция `apply` применяет заданную функцию к массиву разной вложенности. В данном случае передаётся таблица `data`,  `c(1, 2)` показывает, что нужно проходить по строкам и колонкам,`is.na` возвращает `TRUE`, если клетка имеет значение `NA`.
+Функция `colSums` суммирует значения по колонкам.
+Данная команда возвращает сумму несуществующих значений по колонкам.
+
+>Функция ``na.omit()`` принимает датафрейм и возвращает новый датафрейм, игнорируя строки, содержащие значение _NA_. Используйте эту функцию для удаления строк с неполными данными.
+
+```{r}
+before <- nrow(data)
+data <- na.omit(data)
+```
+
+>Сколько строк было удалено?
+
+```{r}
+before - nrow(data)
+```
+
+>Соответствует ли результат выполнения, значениям из пункта 3?
+
+В третьем пункте считались ячейки со значением `NA`, а na.omit удаляет строку со значениями `NA`
+
+# 2 Новые дома
+
+
+>Переменная(колонка) _Built_2005_or_later_ содержит данные о проценте домов, построенных с 2005 года. Постройте диаграмму рассеяния (scatterplot) медианы стоимости домов (переменная _Median_house_value_) относительно процента новых домов.
+
+```{r}
+scatter.smooth(
+  data$Built_2005_or_later ~ data$Median_house_value,
+  xlab = "Build 2005 or later",
+  ylab = "Median house value"
+)
+```
+
+
+>Постройте ещё два графика для каждого из штатов отдельно. Номер штата содержится в переменной (_STATEFP_), где Калифорния 6-й штат, а Пенсильвания 42.
+
+```{r}
+scatter.smooth(
+  data$Built_2005_or_later[data$STATEFP == 6] ~ data$Median_house_value[data$STATEFP == 6],
+  xlab = "Build 2005 or later",
+  ylab = "Median house value",
+  main = "California"
+)
+```
+
+```{r}
+scatter.smooth(
+  data$Built_2005_or_later[data$STATEFP == 42] ~ data$Median_house_value[data$STATEFP == 42],
+  xlab = "Build 2005 or later",
+  ylab = "Median house value",
+  main = "Pennsylvania"
+)
+```
+
+# 3 Незанятые дома
+>Уровень найма (vacancy rate) — доля домов, которые не были заняты. В данных содержатся колонки, содержащие общее количество домовладений и количество не занятых домовладений. 
+
+>В датафрейм _data_ добавьте новую колонку _vacancy_rate_, которая должна содержать вышеописанный показатель.
+
+```{r}
+data$vacancy_rate <- data$Vacant_units / data$Total_units
+```
+
+>Найдите минимум, максимум, среднее и медиану полученных значений показателя. 
+
+```{r}
+min(data$vacancy_rate)
+max(data$vacancy_rate)
+mean(data$vacancy_rate)
+median(data$vacancy_rate)
+```
+
+>Постройте диаграмму уровня найма относительно медианы стоимости домов. 
+
+```{r}
+plot(
+  data$Median_house_value ~ data$vacancy_rate,
+  xlab = "Median house value",
+  ylab = "Vacancy rate"
+)
+```
+
+>Что можно заметить?
+
+Существует обратная зависимость между средней стоимостью жилья и уровнем найма.
+
+# 4 Корреляция
+
+>Колонка _COUNTYFP_ содержит числовой код округа внутри штата. Нас интересуют Butte County (округ 7 в Калифорнии), Santa Clara (округ 85 в Калифорнии) и York County (округ 133 в Пенсильвании).
+
+>Объясните, что делает приведённый в конце задания код и как именно он это делает.
+
+```{r}
+acc <- c()
+for (tract in 1:nrow(ca_pa)) {
+  if (ca_pa$STATEFP[tract] == 6) {
+    if (ca_pa$COUNTYFP[tract] == 1) {
+      acc <- c(acc, tract)
+    }
+  }
+}
+accmv <- c()
+for (tract in acc) {
+  accmv <- c(accmv, ca_pa[tract,10])
+}
+median(accmv)
+
+```
+
+1) добавляем штат под цифрой 6 (Калифорния), в ней округ 1 (Аламеда)
+2) заполняем вектор accmv значениями Median_house_value
+3) считаем среднее по колонке Median_house_value, которую собрали до этого в accmv
+
+>Напишите другим способом в одну строку, то же самое, что делает нижеуказанный код. Способов получить тот же ответ множество, достаточно одного.
+
+```{r}
+median(data$Median_house_value[data$STATEFP == 6][data$COUNTYFP == 1], na.rm = TRUE)
+```
+
+>Найдите средний процент построенных домовладений в округах (Butte County, Santa Clara, York County)
+
+Butte County (COUNTYFP = 7) и Santa Clara (COUNTYFP = 85) находятся в штате California (STATEFP = 6), в то время как York County (COUNTYFP = 133) находится в Pennsylvania (STATEFP = 42).
+
+```{r}
+CA.indexes <- data$STATEFP == 6
+CA.household.units <- sum(data$Total_units[CA.indexes])
+PA.indexes <- data$STATEFP == 42
+PA.household.units <- sum(data$Total_units[PA.indexes])
+```
+
+Butte County, CA
+```{r}
+CA.ButteCounty.indexes <- data$COUNTYFP == 7
+mean(data$Total_units[CA.indexes & CA.ButteCounty.indexes] / CA.household.units, na.rm = TRUE)
+```
+
+Santa Clara, CA
+```{r}
+CA.SantaClara.indexes <- data$COUNTYFP == 85
+mean(data$Total_units[CA.indexes & CA.SantaClara.indexes] / CA.household.units, na.rm = TRUE)
+```
+
+York County, PA
+```{r}
+PA.YorkCounty.indexes <- data$COUNTYFP == 133
+mean(data$Total_units[PA.indexes & PA.YorkCounty.indexes] / PA.household.units, na.rm = TRUE)
+```
+
+>Функция ``cor`` рассчитывает коэффициент корреляции между двумя переменными. Рассчитайте корреляцию между медианы стоимости домовладений (_Median_house_value_) и процентом построенных домов (_Built_2005_or_later_):
+
+## i. для всего набора данных
+
+```{r}
+cor(as.numeric(data$Built_2005_or_later), data$Median_house_value)
+```
+
+## ii. для Калифорнии
+
+```{r}
+build_2005_or_later_CA <- data$Built_2005_or_later[CA.indexes]
+median_house_value_CA <- data$Median_house_value[CA.indexes]
+cor(as.numeric(build_2005_or_later_CA), median_house_value_CA)
+```
+
+## iii. для Пенсильвании
+
+```{r}
+build_2005_or_later_PA <- data$Built_2005_or_later[PA.indexes]
+median_house_value_PA <- data$Median_house_value[PA.indexes]
+cor(as.numeric(build_2005_or_later_PA), median_house_value_PA)
+```
+
+## iv. для округа Butte County
+
+```{r}
+build_2005_or_later_CA_BC <- data$Built_2005_or_later[CA.indexes & CA.ButteCounty.indexes]
+median_house_value_CA_BC <- data$Median_house_value[CA.indexes & CA.ButteCounty.indexes]
+cor(as.numeric(build_2005_or_later_CA_BC), median_house_value_CA_BC, use = "pairwise.complete.obs")
+```
+
+`use = "pairwise.complete.obs"` говорит о том, что пара чисел не должна быть `NA`, иначе пропускаем эту пару.
+
+## v. для округа Santa Clara
+
+```{r}
+build_2005_or_later_CA_SC <- data$Built_2005_or_later[CA.indexes & CA.SantaClara.indexes]
+median_house_value_CA_SC <- data$Median_house_value[CA.indexes & CA.SantaClara.indexes]
+cor(as.numeric(build_2005_or_later_CA_SC), median_house_value_CA_SC, use = "pairwise.complete.obs")
+```
+
+## vi. для округа York County
+
+```{r}
+build_2005_or_later_PA_YC <- data$Built_2005_or_later[PA.indexes & PA.YorkCounty.indexes]
+median_house_value_PA_YC <- data$Median_house_value[PA.indexes & PA.YorkCounty.indexes]
+cor(as.numeric(build_2005_or_later_PA_YC), median_house_value_PA_YC, use = "pairwise.complete.obs")
+```
+
+>Постройте три диаграммы медианы стоимости домовладений (_Median_house_value_) относительно медианы дохода (_Median_household_income_) для трёх округов. Допустимо указать все три на одном графике.
+
+```{r}
+plot(
+  data$Median_house_value[CA.indexes & CA.ButteCounty.indexes] ~ data$Median_household_income[CA.indexes & CA.ButteCounty.indexes],
+  xlab = "Median house value",
+  ylab = "Median household income",
+  main = "Butte County, CA"
+)
+```
+
+```{r}
+plot(
+  data$Median_house_value[CA.indexes & CA.SantaClara.indexes] ~ data$Median_household_income[CA.indexes & CA.SantaClara.indexes],
+  xlab = "Median house value",
+  ylab = "Median household income",
+  main = "Santa Clara, CA"
+)
+```
+
+```{r}
+plot(
+  data$Median_house_value[PA.indexes & PA.YorkCounty.indexes] ~ data$Median_household_income[PA.indexes & PA.YorkCounty.indexes],
+  xlab = "Median house value",
+  ylab = "Median household income",
+  main = "York County, PA"
+)
+```
+
