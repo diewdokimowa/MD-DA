@@ -1,5 +1,5 @@
 ---
-title: "lab3"
+title: "lab4"
 output: html_document
 ---
 
@@ -7,186 +7,309 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Исходные данные
-Файл _forbes.htm_ содержит список богатейших американцев по версии журнала Форбс.
-На его примере потренируемся в разборе html страниц.
+## R Markdown
 
-# Задание 1
-## 1
->Используйте команду ``readLines`` для загрузки файла в текстовый вектор _html_.
+# Пользуясь примером из лекции файл (`5.0.R`) проанализируйте [данные](https://archive.ics.uci.edu/ml/datasets/abalone) о возрасте и физ. характеристиках молюсков
 
 ```{r}
-html <- readLines("https://raw.githubusercontent.com/SergeyMirvoda/MD-DA-2018/master/data/forbes.htm")
+data <- read.csv("https://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data", header=TRUE, sep=",")
 ```
-
-### i
->Сколько строк в файле?
 
 ```{r}
-length(html)
+summary(data)
 ```
-
-### ii
->Сколько символов в файле?
 
 ```{r}
-sum(nchar(html))
+colnames(data)
 ```
-
-## 2
->Откройте файл в текстовом редакторе. Найдите строки, содержащие данные о Билле Гейтсе и Ларри Эллисоне и запомните размер их дохода.
-
-Билл Гейтс - 72, Ларри Эллисон - 41
-
-## 3
->Напишите шаблон регулярного выражения и используйте функцию ``grep``, чтобы извлечь размер дохода из данных в векторе _html_. 
 
 ```{r}
-rating.worth.raw <- grep("^\\s+<td\\sclass=\"worth\">\\$(\\d+|\\d+,\\d+)\\sB</td>$", html, value = TRUE)
+colnames(data) <- c("sex", "length", "diameter", "height", "whole_weight", "shucked_weight", "viscera_weight", "shell_weight", "rings")
+colnames(data)
 ```
-
->Удостоверьтесь, что полученный вектор номеров строк содержит содержит ровно 100 записей и ссылается на номера строк в котрых действительно есть информация о доходе, а не просто первый попавшийся текст.
 
 ```{r}
-length(rating.worth.raw)
+data$sex <- factor(c("Female", "Infant", "Male")[data$sex])
 ```
-
-## 4
->Напишите код, использовав регулярное выражение из п. 1.3, и функции ``regexp`` и ``regmatches``, чтобы извлечь все данные о доходе. 
 
 ```{r}
-rating.worth.start <- regexpr("\\$(\\d+|\\d+,\\d+)\\sB", rating.worth.raw)
-rating.worth.formatted <- regmatches(rating.worth.raw, rating.worth.start)
+par(mfrow=c(1,3)) 
+hist(data$diameter, main = "Диаметр, мм")
+hist(data$height, main = "Высота, мм")
+hist(data$whole_weight, main = "Полный вес, гр")
 ```
 
->Проверьте следующее:
-
-### i
->Должно быть ровно сто значений.
+## Построим линейные модели:
 
 ```{r}
-length(rating.worth.formatted)
+#1
+
+linear.model.raw.1 <- lm(data$diameter ~ data$whole_weight)
+summary(linear.model.raw.1)
+plot(linear.model.raw.1)
+
+#2
+
+linear.model.raw.2 <- lm(data$height ~ data$whole_weight)
+summary(linear.model.raw.2)
+plot(linear.model.raw.2)
+
+#3
+
+linear.model.raw.3 <- lm(data$whole_weight ~ + data$shucked_weight + data$viscera_weight + data$shell_weight + data$rings, data = data)
+summary(linear.model.raw.3)
+
+#4
+
+linear.model.raw.4 <- lm(data$whole_weight ~ ., data = data)
+summary(linear.model.raw.4)
+plot(linear.model.raw.4)
 ```
 
-### ii
->Самый большой доход должен быть доход Билла Гейтса
+# Так как видна [ассиметрия](https://en.wikipedia.org/wiki/Skewness) и выбросы, то избавимся от них следующим образом:
 
 ```{r}
-rating.worth.formatted[1]
+data.raw <- data
+data <- data %>%
+  filter(diameter >= 0.26 & diameter < 0.52) %>%
+  filter(height > 0.08 & height < 0.18) %>%
+  filter(whole_weight > 0.20 & whole_weight < 1.4)
+par(mfrow=c(1,3)) 
+hist(data$diameter, main = "Диаметр, мм")
+hist(data$height, main = "Высота, мм")
+hist(data$whole_weight, main = "Полный вес, гр")
 ```
 
-### iii
->Такой доход должен быть в списке один раз.
+# Чтобы визуализировать возможные зависимости, построим графики: 
 
 ```{r}
-length(grep("$72 B", rating.worth.formatted, fixed = TRUE)) == 1
+par(mfrow=c(1,2)) 
+plot(data$diameter, data$whole_weight,'p',main = "Зависимость веса от диаметра")
+plot(data$height, data$whole_weight,'p',main = "Зависимость веса от высоты")
 ```
 
-### iv
->В всписке должна быть цифра, которую мы запомнили для Ларри Эллисона.
+# Далее построим линейные модели без выбросов:
 
 ```{r}
-length(grep("$41 B", rating.worth.formatted, fixed = TRUE)) > 0
+#1
+
+linear.model.1 <- lm(data$diameter ~ data$whole_weight)
+summary(linear.model.1)
+plot(linear.model.1)
+
+#2
+
+linear.model.2 <- lm(data$height ~ data$whole_weight)
+summary(linear.model.2)
+plot(linear.model.2)
+
+#3
+
+linear.model.3 <- lm(data$whole_weight ~ + data$shucked_weight + data$viscera_weight + data$shell_weight + data$rings, data = data)
+summary(linear.model.3)
+plot(linear.model.3)
+
+#4
+
+linear.model.4 <- lm(data$whole_weight ~ + data$shucked_weight + data$viscera_weight + data$shell_weight + data$rings, data = data)
+summary(linear.model.4)
+plot(linear.model.4)
 ```
 
-### v
->Должно быть как минимум два значения, встречающихся несколько раз.
+# Проверим модели:
 
 ```{r}
-rating.worth.formatted.table = as.data.frame(table(rating.worth.formatted))
-length(rating.worth.formatted.table$Freq >= 2)
+odds <- seq(1, nrow(data.raw), by=2)
+shell.weight.in <- data.raw[odds,]
+shell.weight.out <- data.raw[-odds,]
 ```
 
-Повторяющихся значений: $66$.
+## Модели с выбросами
 
-# Задание 2
-## 1
->В данных доход представлен в формате **"$42 B"**, что означает **42 × 10^9**. Преобразуйте этот формат в числовой и сохраните в вектор _worths_. 
+### Построим первую модель:
 
 ```{r}
-value <- regexpr("(\\d+|,\\d+)", rating.worth.formatted)
-value <- regmatches(rating.worth.formatted, value)
-value <- gsub(",", ".", value)
-worths <- as.double(value) * 1e9
-remove("value")
+linear.model.raw.half.1 <- lm(shell.weight.in$diameter ~ shell.weight.in$whole_weight)
+summary(linear.model.raw.half.1)
 ```
-
->Удостоверьтесь в следующем:
-
-### i
->_worths_ является вектором и в нём сто занчений типа _double_.
 
 ```{r}
-is.vector(worths)
-is.double(worths)
-length(worths)
+shell.weight.predict.raw.1 <- predict(linear.model.raw.half.1)
+cor(shell.weight.in$whole_weight, shell.weight.predict.raw.1)
+plot(shell.weight.in$whole_weight, shell.weight.predict.raw.1)
 ```
-
-### ii
->Все элементы вектора _worths_ больше 1 миллиарда.
 
 ```{r}
-all(worths > 1e9)
+shell.weight.predict.raw.out.1 <- predict(linear.model.raw.half.1, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.1)
+plot(shell.weight.out$whole_weight, shell.weight.predict.raw.out.1)
 ```
 
-### iii
->Самое большое число это доход Билла Гейтса.
+#### Вывод
+Прогноз первой модели неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.1)` < 0.95.
+
+### Теперь построим вторую модель:
+```{r}
+linear.model.raw.half.2 <- lm(shell.weight.in$height ~ shell.weight.in$whole_weight)
+summary(linear.model.raw.half.2)
+```
 
 ```{r}
-max(worths) == 7.2e10
+shell.weight.predict.raw.2 <- predict(linear.model.raw.half.2)
+cor(shell.weight.in$whole_weight, shell.weight.predict.raw.2)
+plot(shell.weight.in$whole_weight, shell.weight.predict.raw.2)
 ```
-
-## 2
->Используйте вектор _worths_ , чтобы выяснить следующее:
-
-### i
->Какова медиана ста этих записей?
 
 ```{r}
-median(worths)
+shell.weight.predict.raw.out.2 <- predict(linear.model.raw.half.2, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.2)
+plot(shell.weight.out$whole_weight, shell.weight.predict.raw.out.2)
 ```
 
-### ii
->Средний доход?
+#### Вывод
+Прогноз второй модели также неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.2)` < 0.95.
+
+### Третья модель:
 
 ```{r}
-mean(worths)
+linear.model.raw.half.3 <- lm(shell.weight.in$whole_weight ~
+                          + shell.weight.in$shucked_weight
+                          + shell.weight.in$viscera_weight
+                          + shell.weight.in$shell_weight
+                          + shell.weight.in$rings,
+                       data = shell.weight.in)
+summary(linear.model.raw.half.3)
 ```
-
-### iii
->Как много людей из этого списка имеют доход больше 5млрд., 10, 25? 
 
 ```{r}
-length(which(worths > 5e9))
-length(which(worths > 1e10))
-length(which(worths > 2.5e10))
+shell.weight.predict.raw.3 <- predict(linear.model.raw.half.3)
+cor(shell.weight.in$whole_weight, shell.weight.predict.raw.3)
+plot(shell.weight.in$whole_weight, shell.weight.predict.raw.3)
 ```
-
-### iv
->Какой их общий доход?
 
 ```{r}
-sum(worths)
+shell.weight.predict.raw.out.3 <- predict(linear.model.raw.half.3, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.3)
+plot(shell.weight.out$whole_weight, shell.weight.predict.raw.out.3)
 ```
 
-### v
->Какую долю от общего дохода, составляет пятёрка самых богатых.
+#### Вывод
+Прогноз третий модели снова неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.3)` < 0.95.
+
+### Последняя четвёртая модель:
+```{r}
+linear.model.raw.half.4 <- lm(shell.weight.in$whole_weight ~ . - shell.weight.in$whole_weight, data = shell.weight.in)
+summary(linear.model.raw.half.4)
+```
 
 ```{r}
-sum(worths[1:5]) / sum(worths)
+shell.weight.predict.raw.4 <- predict(linear.model.raw.half.4)
+cor(shell.weight.in$whole_weight, shell.weight.predict.raw.4)
+plot(shell.weight.in$whole_weight, shell.weight.predict.raw.4)
 ```
-
-### vi
->Какую долю от общего дохода, составляют 20 самых богатых.
 
 ```{r}
-sum(worths[1:20]) / sum(worths)
+shell.weight.predict.raw.out.4 <- predict(linear.model.raw.half.4, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.4)
+plot(shell.weight.out$whole_weight, shell.weight.predict.raw.out.4)
 ```
 
-### vii
->В данных [федеральный резерв США, после 2015](https://www.federalreserve.gov/releases/z1/20180920/z1.pdf) (24 страница) [Федеральный резерс США, до 2013](https://www.zerohedge.com/sites/default/files/images/user5/imageroot/2013/09/Flow%20of%20Funds%20Z1%20Q1%202013.pdf) (123 страница) найдите показатель дохода всех домохозяйств (Household net worth) в соответвующем году, какую долю общего дохода составляют 100 богатейших людей. 
+#### Вывод
+Прогноз четвёртый модели отличный: составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.raw.out.4)` > 0.95.
+
+## Рассмотрим модели без выбросов:
+```{r}
+odds <- seq(1, nrow(data), by=2)
+shell.weight.in <- data[odds,]
+shell.weight.out <- data[-odds,]
+```
+
+### Первая модель:
 
 ```{r}
-household.net.worth.2013 <- 7.8536e13
-sum(worths) / household.net.worth.2013
+linear.model.half.1 <- lm(shell.weight.in$diameter ~ shell.weight.in$whole_weight)
+summary(linear.model.half.1)
 ```
+
+```{r}
+shell.weight.predict.1 <- predict(linear.model.half.1)
+cor(shell.weight.in$whole_weight, shell.weight.predict.1)
+plot(shell.weight.in$whole_weight, shell.weight.predict.1)
+```
+
+```{r}
+shell.weight.predict.out.1 <- predict(linear.model.half.1, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.out.1)
+plot(shell.weight.out$whole_weight, shell.weight.predict.out.1)
+```
+
+#### Вывод
+Прогноз первой модели неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.out.1)` < 0.95.
+
+### Вторая модель:
+```{r}
+linear.model.half.2 <- lm(shell.weight.in$height ~ shell.weight.in$whole_weight)
+summary(linear.model.half.2)
+```
+
+```{r}
+shell.weight.predict.2 <- predict(linear.model.half.2)
+cor(shell.weight.in$whole_weight, shell.weight.predict.2)
+plot(shell.weight.in$whole_weight, shell.weight.predict.2)
+```
+
+```{r}
+shell.weight.predict.out.2 <- predict(linear.model.half.2, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.out.2)
+plot(shell.weight.out$whole_weight, shell.weight.predict.out.2)
+```
+
+#### Вывод
+Прогноз второй модели неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.out.2)` < 0.95.
+
+### Третья модель:
+```{r}
+linear.model.half.3 <- lm(shell.weight.in$whole_weight ~
+                          + shell.weight.in$shucked_weight
+                          + shell.weight.in$viscera_weight
+                          + shell.weight.in$shell_weight
+                          + shell.weight.in$rings,
+                       data = shell.weight.in)
+summary(linear.model.half.3)
+```
+
+```{r}
+shell.weight.predict.3 <- predict(linear.model.half.3)
+cor(shell.weight.in$whole_weight, shell.weight.predict.3)
+plot(shell.weight.in$whole_weight, shell.weight.predict.3)
+```
+
+```{r}
+shell.weight.predict.out.3 <- predict(linear.model.half.3, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.out.3)
+plot(shell.weight.out$whole_weight, shell.weight.predict.out.3)
+```
+
+#### Вывод
+Прогноз третий модели неудовлетворительный. Всего составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.out.3)` < 0.95.
+
+### Четвёртая модель:
+```{r}
+linear.model.half.4 <- lm(shell.weight.in$whole_weight ~ . - shell.weight.in$whole_weight, data = shell.weight.in)
+summary(linear.model.half.4)
+```
+
+```{r}
+shell.weight.predict.4 <- predict(linear.model.half.4)
+cor(shell.weight.in$whole_weight, shell.weight.predict.4)
+plot(shell.weight.in$whole_weight, shell.weight.predict.4)
+```
+
+```{r}
+shell.weight.predict.out.4 <- predict(linear.model.half.4, shell.weight.out)
+cor(shell.weight.out$whole_weight, shell.weight.predict.out.4)
+plot(shell.weight.out$whole_weight, shell.weight.predict.out.4)
+```
+
+#### Вывод
+Прогноз четвёртый модели отличный: составляет `r cor(shell.weight.out$whole_weight, shell.weight.predict.out.4)` > 0.95.
