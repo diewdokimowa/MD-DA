@@ -58,6 +58,7 @@ plot(linear.model.raw.2)
 
 linear.model.raw.3 <- lm(data$whole_weight ~ + data$shucked_weight + data$viscera_weight + data$shell_weight + data$rings, data = data)
 summary(linear.model.raw.3)
+plot(linear.model.raw.3)
 
 #4
 
@@ -69,6 +70,7 @@ plot(linear.model.raw.4)
 # Так как видна [ассиметрия](https://en.wikipedia.org/wiki/Skewness) и выбросы, то избавимся от них следующим образом:
 
 ```{r}
+library('dplyr')
 data.raw <- data
 data <- data %>%
   filter(diameter >= 0.26 & diameter < 0.52) %>%
